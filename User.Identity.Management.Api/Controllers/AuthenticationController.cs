@@ -24,7 +24,7 @@ namespace User.Identity.Management.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> RegisterAdmin(RegisterUser registerUser, string role)
         {
-            // check uer exist
+            // check user exist
             var userExist = await _userManager.FindByEmailAsync(registerUser.Email);
             if (userExist != null) 
             {
@@ -33,25 +33,34 @@ namespace User.Identity.Management.Api.Controllers
 
             }
 
-            // ass user to db
+            // assign user to db
             IdentityUser user = new()
             {
                 Email = registerUser.Email,
                 SecurityStamp = Guid.NewGuid().ToString(),
                 UserName = registerUser.UserName
             };
-            var result= await _userManager.CreateAsync(user, registerUser.Password);
-            if (result.Succeeded)
+            if(await _roleManager.RoleExistsAsync(role)) 
             {
-                return StatusCode(StatusCodes.Status201Created,
-                    new Response { Status= "Sucess", Message= "User Created Successfully"});
+                var result = await _userManager.CreateAsync(user, registerUser.Password);
+
+                if (!result.Succeeded)
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError,
+                        new Response { Status = "Error", Message = "User Failed to Create" });
+                }
+                // add role to the user...
+                await _userManager.AddToRoleAsync(user, role);
+                return StatusCode(StatusCodes.Status200OK,
+                        new Response { Status = "Success", Message = "User created Successfully" });
+
             }
             else
             {
                 return StatusCode(StatusCodes.Status500InternalServerError,
-                    new Response { Status = "Error", Message = "User Failed to Create" });
+                       new Response { Status = "Error", Message = "This Role Does not exist" });
             }
-            // assign a role in next.....
+  
 
         }
     }
